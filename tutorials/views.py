@@ -36,6 +36,7 @@ def tutorial_list(request):
         return JsonResponse({'message': '{} Tutorials were deleted successfully!'.format(count[0])},
                             status=status.HTTP_204_NO_CONTENT)
 
+
 # 1.1 : class based view extending views from django
 from django.views import View
 
@@ -47,10 +48,22 @@ class tutorial_list_view(View):
         return JsonResponse(tutorials_serializer.data, safe=False)
 
 
-# 1.2 : class based view extending generics from rest_framwork
-from rest_framework import generics
+# 1.2 : class based views using generics and mixins from rest_framwork
+from rest_framework import generics, mixins
 
 
+class tutorial_list_view_generic_mixins(generics.GenericAPIView, mixins.ListModelMixin, mixins.CreateModelMixin):
+    queryset = Tutorial.objects.all()
+    serializer_class = TutorialSerializer
+
+    def get(self, request):
+        return self.list(request)
+
+    def post(self, request):
+        return self.create(request)
+
+
+# 1.3 : class based view extending generics from rest_framwork
 # Since we are using the ListCreateAPIView we are allowed to do POST and GET because the method are already implemented
 # for us, it is abstracted
 # I don't think a generic class implement a DELETE on all objects unless you override one method
@@ -85,13 +98,35 @@ def tutorial_detail(request, pk):
 
     # GET / PUT / DELETE tutorial
 
-# 2.1 : Generics from django rest framework
+
+# 2.1: Generics + mixins
+class tutorial_detail_view_generic_mixins(generics.GenericAPIView, mixins.RetrieveModelMixin, mixins.UpdateModelMixin,
+                                          mixins.DestroyModelMixin):
+    queryset = Tutorial.objects.all()
+    serializer_class = TutorialSerializer
+    # default to pk, so if you dont have the lookup field not a problem for pk else
+    # if you are using something else use lookup_field
+    lookup_field = "id"
+
+    def get(self, request, id=None):
+        if id:
+            return self.retrieve(request)
+
+    def put(self, request, *args, **kwargs):
+        return self.update(request)
+
+    def delete(self, request, id=None):
+        if id:
+            return self.destroy(request)
+
+
+
+# 2.2 : Generics from django rest framework
 # All the above code can be done just using this generic class that implements GET PUT PATCH DELETE for single
 # model instance
 class tutorial_detail_view_generic(generics.RetrieveUpdateDestroyAPIView):
     queryset = Tutorial.objects.all()
     serializer_class = TutorialSerializer
-
 
 
 # 3 : Function based view
@@ -104,7 +139,17 @@ def tutorial_list_published(request):
         tutorials_serializer = TutorialSerializer(tutorials, many=True)
         return JsonResponse(tutorials_serializer.data, safe=False)
 
-# 3.1 : using generics
+
+# 3.1 : using generics + mixins
+class tutorial_list_published_view_generics_mixins(generics.GenericAPIView, mixins.ListModelMixin):
+    queryset = Tutorial.objects.filter(published=True)
+    serializer_class = TutorialSerializer
+
+    def get(self, request):
+        return self.list(request)
+
+
+# 3.2 : using generics
 class tutorial_list_published_view_generics(generics.ListCreateAPIView):
     queryset = Tutorial.objects.filter(published=True)
     serializer_class = TutorialSerializer
